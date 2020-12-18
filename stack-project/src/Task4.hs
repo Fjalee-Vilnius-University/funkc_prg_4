@@ -2,11 +2,11 @@ import Control.Monad.Trans.State.Strict
 import Control.Monad.Trans.Except
 import Control.Monad.Trans.Class
 import System.Environment
+import Control.Applicative
 
 import Data.List
 import Data.Char
 
---runState (runExceptT parseInt) "i432easd"
 type Parser a = ExceptT String (State String) a
 
 data JsonLikeValue =
@@ -15,6 +15,63 @@ data JsonLikeValue =
     JLMap [(String, JsonLikeValue)] |
     JLArray [JsonLikeValue]
     deriving (Show, Eq)
+
+parse :: Parser a -> String -> (Either String a, String)
+parse parser = runState (runExceptT parser)
+
+parseJLValue = parseJLString <|> parseJLInt
+
+parseJLString = do
+    str <- lift get
+    parseJLString' str
+
+parseJLString' :: String -> Parser JsonLikeValue
+parseJLString' str = 
+    if isDigit $ head str then
+        let
+            strLen = takeWhile isDigit str
+        in
+        case drop (length strLen) str of
+            (':':r) -> 
+                let
+                    parsedVal = take (read strLen) r           
+                    rest = drop (read strLen) r
+                in 
+                    do
+                        lift $ put rest
+                        return $ JLString parsedVal
+            _ -> throwE "Error String parser: symbol : wasn't found after a number"
+    else throwE "Error String parser: first symbol isn't a number"
+
+parseJLInt :: Parser JsonLikeValue
+parseJLInt = 
+    do 
+        str <- lift get
+        parseJLInt' str
+
+parseJLInt' :: String -> Parser JsonLikeValue
+parseJLInt' str = 
+    case str of
+        ('i':t) -> 
+            if not (isDigit $ head t) then
+                throwE "Error Int parser: next symbol after i isn't parseJLInt digit"
+            else
+                let
+                    prefix = takeWhile isDigit t
+                    postfix = drop (length prefix) t
+                in
+                    case postfix of
+                        ('e':r) -> 
+                            let
+                                parsedVal = read prefix
+                            in
+                                do
+                                    lift $ put r
+                                    return $ JLInt parsedVal
+                        _ -> throwE "Error Int parser: int didn't end with e"
+        [] -> throwE "Error Int parser: Received an empty string"
+        _  -> throwE "Error Int parser: Received string doesn't start with i"
+
 
 -- parseAllMapedJLValues :: String -> String -> Either String (JsonLikeValue, String)
 -- parseAllMapedJLValues ('e':t) _ = Right (JLMap [], t)
@@ -50,20 +107,20 @@ data JsonLikeValue =
 --                 case postfix of
 --                 (':':r) -> Right (take (read strLen) r, drop (read strLen) r)
 --                 _ -> Left ("Error around character " ++ show errPos ++ " received string: " ++ str ++ " Invalid string")
+-- parseJLValue' = do
+--     str <- get 
+--     parseJLValue str
 
--- parseJLValue :: String -> Either String (JsonLikeValue, String)
--- parseJLValue ('d':t) orgStr = 
-    -- case parseJLMap('d':t) orgStr of
-    --     Left a -> Left a
-    --     Right (a, b) -> Right (a, b)
--- parseJLValue ('l':t) orgStr = 
-    -- case parseJLArray [] ('l':t) orgStr of
-    --     Left a -> Left a
-    --     Right (a, b) -> Right (a, b)
--- parseJLValue ('i':t) = 
---     case parseJLInt of
---         Left a -> Left a
---         Right (a, b) -> Right (a, b)
+-- parseJLValue :: String -> Parser JsonLikeValue
+-- -- parseJLValue ('d':t) orgStr = 
+-- --     case parseJLMap('d':t) orgStr of
+-- --         Left a -> Left a
+-- --         Right (a, b) -> Right (a, b)
+-- -- parseJLValue ('l':t) orgStr = 
+-- --     case parseJLArray [] ('l':t) orgStr of
+-- --         Left a -> Left a
+-- --         Right (a, b) -> Right (a, b)
+-- parseJLValue ('i':t) = runState (runExceptT parseJLInt) "i432easd"
 -- parseJLValue (h:t) =
 --     if isDigit h
 --     then 
@@ -94,54 +151,3 @@ data JsonLikeValue =
 -- -- parseJLArray _ dnStartL orgStr = Left ("Error around character " ++ show errPos ++ " received string: " ++ dnStartL ++ " list has to start with an 'l'")
 -- --     where
 -- --         errPos = lenDiff orgStr dnStartL
-
-parseJLString' = do
-    str <- lift get
-    parseJLString str
-
-parseJLString :: String -> Parser JsonLikeValue
-parseJLString str = 
-    if isDigit $ head str then
-        let
-            strLen = takeWhile isDigit str
-        in
-        case drop (length strLen) str of
-            (':':r) -> 
-                let
-                    parsedVal = take (read strLen) r           
-                    rest = drop (read strLen) r
-                in 
-                    do
-                        lift $ put rest
-                        return $ JLString parsedVal
-            _ -> throwE "Error String parser: symbol : wasn't found after a number"
-    else throwE "Error String parser: first symbol isn't a number"
-
-
-parseJLInt' = 
-    do 
-        str <- lift get
-        parseJLInt str
-
-parseJLInt :: String -> Parser JsonLikeValue
-parseJLInt str = 
-    case str of
-        ('i':t) -> 
-            if not (isDigit $ head t) then
-                throwE "Error Int parser: next symbol after i isn't a digit"
-            else
-                let
-                    prefix = takeWhile isDigit t
-                    postfix = drop (length prefix) t
-                in
-                    case postfix of
-                        ('e':r) -> 
-                            let
-                                parsedVal = read prefix
-                            in
-                                do
-                                    lift $ put r
-                                    return $ JLInt parsedVal
-                        _ -> throwE "Error Int parser: int didn't end with e"
-        [] -> throwE "Error Int parser: Received an empty string"
-        _  -> throwE "Error Int parser: Received string doesn't start with i"
