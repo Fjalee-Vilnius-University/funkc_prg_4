@@ -21,6 +21,7 @@ parse parser = runState (runExceptT parser)
 
 parseJLValue = parseJLString <|> parseJLInt
 
+parseJLString :: Parser JsonLikeValue
 parseJLString = do
     str <- lift get
     parseJLString' str
