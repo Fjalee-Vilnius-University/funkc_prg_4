@@ -3,6 +3,8 @@ import Control.Monad.Trans.Except
 import Control.Monad.Trans.Class
 import System.Environment
 import Control.Applicative
+import Control.Monad
+import Data.Monoid
 
 import Data.List
 import Data.Char
@@ -19,12 +21,52 @@ data JsonLikeValue =
 parse :: Parser a -> String -> (Either String a, String)
 parse parser = runState (runExceptT parser)
 
-parseJLValue = parseJLString <|> parseJLInt
+parseJLValue :: Parser JsonLikeValue
+parseJLValue = parseJLString <|> parseJLInt <|> parseJLArray -- <|> parseJLMap
+
+parseJLArray :: Parser JsonLikeValue 
+parseJLArray = do
+    str <- lift get 
+    case str of
+        ('l':t) -> parseJLArray' [] str
+        _ -> throwE "Not an Array. "
+
+parseJLArray' :: [JsonLikeValue] -> String -> Parser JsonLikeValue
+parseJLArray' acc str = 
+    let
+        body = if (head str == 'l') then (drop 1 str) else str
+        (eitherParsedVal, rest) = parse parseJLValue body
+    in
+        case eitherParsedVal of
+            Left a -> throwE a
+            Right parsedVal ->
+                let 
+                    newAcc = (acc ++ [parsedVal])
+                in
+                    if length rest == 0
+                        then throwE "Error Array parser: symbol : Array didn't close."
+                        else
+                        case rest of
+                            ('e': t ) -> do
+                                lift $ put t
+                                return $ JLArray newAcc
+                            
+                            _ -> parseJLArray' newAcc rest
+
+parseJLMap :: Parser JsonLikeValue 
+parseJLMap = do
+    str <- lift get 
+    parseJLMap' str
+
+parseJLMap' :: String -> Parser JsonLikeValue 
+parseJLMap' str = throwE "Map not implemented. "
 
 parseJLString :: Parser JsonLikeValue
 parseJLString = do
     str <- lift get
-    parseJLString' str
+    case takeWhile isDigit str of
+        "" -> throwE "Not a String. "
+        _ -> parseJLString' str
 
 parseJLString' :: String -> Parser JsonLikeValue
 parseJLString' str = 
@@ -41,21 +83,24 @@ parseJLString' str =
                     do
                         lift $ put rest
                         return $ JLString parsedVal
-            _ -> throwE "Error String parser: symbol : wasn't found after a number"
-    else throwE "Error String parser: first symbol isn't a number"
+            _ -> throwE "Error String parser: symbol : wasn't found after a number. "
+    else throwE "Error String parser: first symbol isn't a number. "
 
 parseJLInt :: Parser JsonLikeValue
 parseJLInt = 
     do 
         str <- lift get
-        parseJLInt' str
+        case str of
+            ('i':t) -> parseJLInt' str
+            _ -> throwE "Not an Int. "
+        
 
 parseJLInt' :: String -> Parser JsonLikeValue
 parseJLInt' str = 
     case str of
         ('i':t) -> 
             if not (isDigit $ head t) then
-                throwE "Error Int parser: next symbol after i isn't parseJLInt digit"
+                throwE "Error Int parser: next symbol after i isn't parseJLInt digit. "
             else
                 let
                     prefix = takeWhile isDigit t
@@ -69,9 +114,9 @@ parseJLInt' str =
                                 do
                                     lift $ put r
                                     return $ JLInt parsedVal
-                        _ -> throwE "Error Int parser: int didn't end with e"
-        [] -> throwE "Error Int parser: Received an empty string"
-        _  -> throwE "Error Int parser: Received string doesn't start with i"
+                        _ -> throwE "Error Int parser: int didn't end with e. "
+        [] -> throwE "Error Int parser: Received an empty string. "
+        _  -> throwE "Error Int parser: Received string doesn't start with i. "
 
 
 -- parseAllMapedJLValues :: String -> String -> Either String (JsonLikeValue, String)
@@ -92,44 +137,6 @@ parseJLInt' str =
 --             case parseJLValue rest orgStr of
 --                 Left a -> Left a
 --                 Right (value, rest') -> Right ((key, value), rest')
-
--- parseString :: String -> String -> Either String (String, String)
--- parseString str orgStr =
---     let
---         errPos = lenDiff orgStr str
---         strLen = if isDigit $ head str
---             then takeWhile isDigit str
---             else "not declared"
---         postfix = drop (length strLen) str
---     in
---         case strLen of 
---             "not declared" -> Left ("Error around character " ++ show errPos ++ " received string: " ++ str ++ " Length of the string was not declared")
---             _ ->
---                 case postfix of
---                 (':':r) -> Right (take (read strLen) r, drop (read strLen) r)
---                 _ -> Left ("Error around character " ++ show errPos ++ " received string: " ++ str ++ " Invalid string")
--- parseJLValue' = do
---     str <- get 
---     parseJLValue str
-
--- parseJLValue :: String -> Parser JsonLikeValue
--- -- parseJLValue ('d':t) orgStr = 
--- --     case parseJLMap('d':t) orgStr of
--- --         Left a -> Left a
--- --         Right (a, b) -> Right (a, b)
--- -- parseJLValue ('l':t) orgStr = 
--- --     case parseJLArray [] ('l':t) orgStr of
--- --         Left a -> Left a
--- --         Right (a, b) -> Right (a, b)
--- parseJLValue ('i':t) = runState (runExceptT parseJLInt) "i432easd"
--- parseJLValue (h:t) =
---     if isDigit h
---     then 
---         case parseJLString (h:t) of
---             Left a -> Left a
---             Right (a, b) -> Right (a, b)
---     else Left ("Error JLV parser: JsonLikeValue has to start with a 'd' or a 'l' or an 'i' or a digit")
--- parseJLValue [] = Left "Error JLV parser: Received an empty string"
 
 -- -- parseJLArray :: [JsonLikeValue] -> String -> String -> Either String (JsonLikeValue, String)
 -- -- parseJLArray [] ('l':t) orgStr =
