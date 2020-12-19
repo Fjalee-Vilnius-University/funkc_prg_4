@@ -194,7 +194,7 @@ run =
         --msg = "d4:prevd4:prevd4:lastld4:datali1ei0e1:Xeee4:prevd4:prevd4:lastld4:datali1ei2e1:Xeee4:prevd4:prevd4:lastld4:datali0ei1e1:Xeee4:prevd4:prevd4:lastld4:datali2ei2e1:Xeeee4:lastld4:datali2ei1e1:Oeeeee4:lastld4:datali2ei0e1:Oeeeee4:lastld4:datali1ei1e1:Oeeeee4:lastld4:datali0ei0e1:Oeeee4:lastld4:datali0ei2e1:Xeeee"
         
         --[(_, "oxi"),(_, 42),(_, "oxoxox")]
-        -- msg = "d3:qws3:oxi2:poi42e4:opep6:oxoxoxe"
+        --msg = "d3:qws3:oxi2:poi42e4:opep6:oxoxoxe"
 
         --[(_, 32),(_, 42),(_, 67)]
         --msg = "d3:qwsi32e2:poi42e4:opepi67ee"
@@ -205,47 +205,78 @@ run =
         --[45, 88, "nono", 65, "asd"]
         --msg = "li45ei88e4:nonoi65e3:asde"
 
-        --[[(_, 32),(_, 42),(_, "hyhy")]]
-        msg = "ld3:qwsi32e2:poi42e4:opep4:hyhyee"
+        --[(_, "oxi"),(_, 42),(_, "oxoxox"), (_, [46, "asd"])]
+        msg = "d3:qws3:oxi2:poi42e4:opep6:oxoxox2:tyli43e3:asdee"
 
         eitherJLValue= fst $ p msg
     in
         case eitherJLValue of
             Left _ -> error "run function Left"
-            Right jlVal -> myFind arrayFindJLString jlVal
+            Right jlVal -> containerFindAllJLStrings jlVal
+            -- Right jlVal -> myFind arrayFindJLString jlVal
 
 type Finder a = ExceptT String (State JsonLikeValue) a
 
 myFind :: Finder a -> JsonLikeValue -> (Either String a, JsonLikeValue)
 myFind finder = runState (runExceptT finder)
 
--- findJLString :: Finder (JsonLikeValue, String)
--- findJLString = 
+
+
+containerFindAllJLStrings :: JsonLikeValue -> [(JsonLikeValue, String)]
+containerFindAllJLStrings container = containerFindAllJLStrings' container []
+
+containerFindAllJLStrings' :: JsonLikeValue -> [(JsonLikeValue, String)] -> [(JsonLikeValue, String)]
+containerFindAllJLStrings' container acc = 
+    case container of 
+        JLMap body -> 
+            case body of
+                [] -> acc
+                _ ->
+                    let
+                        (eitherJLString, rest) = myFind mapFindJLString container
+                    in
+                        case eitherJLString of
+                            Left _ -> acc
+                            Right a ->
+                                containerFindAllJLStrings' rest (acc ++ [a])
+        JLArray body ->
+            case body of
+                [] -> acc
+                _ ->
+                    let
+                        (eitherJLString, rest) = myFind arrayFindJLString container
+                    in
+                        case eitherJLString of
+                            Left _ -> acc
+                            Right a ->
+                                containerFindAllJLStrings' rest (acc ++ [a])
 
 mapFindJLString :: Finder (JsonLikeValue, String)
-mapFindJLString = do 
-    myMap <- lift get
-    case myMap of
-        JLMap _ -> mapFindJLString' myMap 0
-        _ -> throwE "Error Finder: Not a map. "
+mapFindJLString = 
+    do 
+        myMap <- lift get
+        case myMap of
+            JLMap _ -> mapFindJLString' myMap
+            _ -> throwE "Error Finder: Not a map. "
 
-mapFindJLString' :: JsonLikeValue -> Int -> Finder (JsonLikeValue, String)
-mapFindJLString' (JLMap []) elIndex = do
+mapFindJLString' :: JsonLikeValue -> Finder (JsonLikeValue, String)
+mapFindJLString' (JLMap []) = do
     lift $ put $ JLMap []
     throwE "No String in the map. "
-mapFindJLString' (JLMap ((key1, val1):t)) elIndex = 
+mapFindJLString' (JLMap ((key1, val1):t)) = 
     case val1 of
         JLString _ -> do
             lift $ put $ JLMap t
-            return (val1, "." ++ key1 ++ "[" ++ show elIndex ++ "]")
-        _ -> mapFindJLString' (JLMap t) (elIndex + 1)
+            return (val1, "." ++ key1)
+        _ -> mapFindJLString' (JLMap t)
 
 arrayFindJLString :: Finder (JsonLikeValue, String)
-arrayFindJLString = do 
-    myArray <- lift get
-    case myArray of
-        JLArray _ -> arrayFindJLString' myArray 0
-        _ -> throwE "Error Finder: Not an array. "
+arrayFindJLString =
+    do 
+        myArray <- lift get
+        case myArray of
+            JLArray _ -> arrayFindJLString' myArray 0
+            _ -> throwE "Error Finder: Not an array. "
 
 arrayFindJLString' :: JsonLikeValue -> Int -> Finder (JsonLikeValue, String)
 arrayFindJLString' (JLArray []) elIndex = do
@@ -256,15 +287,5 @@ arrayFindJLString' (JLArray (val1:t)) elIndex =
         JLString _ -> do
             lift $ put $ JLArray t
             return (val1, "[" ++ show elIndex ++ "]")
-        JLMap _ -> do
-            lift $ put val1
-            let (eitherJLString, restMap) = myFind mapFindJLString val1
-            case eitherJLString of
-                Left _ -> error "" 
-                Right (jLString, path) -> 
-                    error $ show (jLString, path)
-                    --return (val1, "no")
-                --JLArray _ -> do
-                    
-                _ -> arrayFindJLString' (JLArray t) (elIndex + 1)
+        _ -> arrayFindJLString' (JLArray t) (elIndex + 1)
 
