@@ -22,8 +22,42 @@ parse :: Parser a -> String -> (Either String a, String)
 parse parser = runState (runExceptT parser)
 
 parseJLValue :: Parser JsonLikeValue
-parseJLValue = parseJLString <|> parseJLInt <|> parseJLArray -- <|> parseJLMap
+parseJLValue = parseJLString <|> parseJLInt <|> parseJLArray <|> parseJLMap
 
+parseJLMap :: Parser JsonLikeValue 
+parseJLMap = do
+    str <- lift get 
+    case str of
+        ('d':t) -> parseJLMap' [] str
+        _ -> throwE "Not a Map. "
+
+parseJLMap' :: [(String, JsonLikeValue)] -> String -> Parser JsonLikeValue 
+parseJLMap' acc str = 
+    let
+        body = if (head str == 'd') then (drop 1 str) else str
+        (eitherJLString, noKeyRest) = parse parseJLString body
+    in
+        case eitherJLString of
+            Left a -> throwE a
+            Right (JLString key) ->
+                let
+                    (eitherParsedVal, rest) = parse parseJLValue noKeyRest
+                in 
+                    case eitherParsedVal of
+                        Left a -> throwE a
+                        Right parsedVal ->
+                            let 
+                                newAcc = (acc ++ [(key, parsedVal)])
+                            in
+                                if length rest == 0
+                                    then throwE "Error Map parser: symbol : Map didn't close. "
+                                    else
+                                    case rest of
+                                        ('e': t) -> do
+                                            lift $ put t
+                                            return $ JLMap newAcc
+                                        _ -> parseJLMap' newAcc rest
+                                        
 parseJLArray :: Parser JsonLikeValue 
 parseJLArray = do
     str <- lift get 
@@ -44,22 +78,14 @@ parseJLArray' acc str =
                     newAcc = (acc ++ [parsedVal])
                 in
                     if length rest == 0
-                        then throwE "Error Array parser: symbol : Array didn't close."
+                        then throwE "Error Array parser: symbol : Array didn't close. "
                         else
                         case rest of
-                            ('e': t ) -> do
+                            ('e': t) -> do
                                 lift $ put t
                                 return $ JLArray newAcc
                             
                             _ -> parseJLArray' newAcc rest
-
-parseJLMap :: Parser JsonLikeValue 
-parseJLMap = do
-    str <- lift get 
-    parseJLMap' str
-
-parseJLMap' :: String -> Parser JsonLikeValue 
-parseJLMap' str = throwE "Map not implemented. "
 
 parseJLString :: Parser JsonLikeValue
 parseJLString = do
@@ -69,7 +95,7 @@ parseJLString = do
         _ -> parseJLString' str
 
 parseJLString' :: String -> Parser JsonLikeValue
-parseJLString' str = 
+parseJLString' str =
     if isDigit $ head str then
         let
             strLen = takeWhile isDigit str
@@ -94,7 +120,6 @@ parseJLInt =
             ('i':t) -> parseJLInt' str
             _ -> throwE "Not an Int. "
         
-
 parseJLInt' :: String -> Parser JsonLikeValue
 parseJLInt' str = 
     case str of
@@ -118,6 +143,17 @@ parseJLInt' str =
         [] -> throwE "Error Int parser: Received an empty string. "
         _  -> throwE "Error Int parser: Received string doesn't start with i. "
 
+-- parseJLMap :: String -> String -> Either String (JsonLikeValue, String)
+-- parseJLMap ('d':t) orgStr = 
+--     case parseAllMapedJLValues t orgStr of
+--         Left a -> Left a
+--         Right (mapBody, rest) -> Right (mapBody, rest)
+-- parseJLMap dnStartD orgStr = Left ("Error around character " ++ show errPos ++ " received string: " ++ dnStartD ++ " map has to start with a 'd'")
+--     where 
+--         errPos = lenDiff orgStr dnStartD
+
+-- lenDiff :: String -> String -> Int
+-- lenDiff str1 str2 = (length str1) - (length str2)
 
 -- parseAllMapedJLValues :: String -> String -> Either String (JsonLikeValue, String)
 -- parseAllMapedJLValues ('e':t) _ = Right (JLMap [], t)
@@ -129,6 +165,7 @@ parseJLInt' str =
 --                 Left a -> Left a
 --                 Right (JLMap acc, rest1) -> Right $ (JLMap ([(key, value)] ++ acc), rest1)
 
+
 -- parseMapedJLValue :: String -> String -> Either String ((String, JsonLikeValue), String)
 -- parseMapedJLValue str orgStr = 
 --     case parseString str orgStr of
@@ -138,24 +175,18 @@ parseJLInt' str =
 --                 Left a -> Left a
 --                 Right (value, rest') -> Right ((key, value), rest')
 
--- -- parseJLArray :: [JsonLikeValue] -> String -> String -> Either String (JsonLikeValue, String)
--- -- parseJLArray [] ('l':t) orgStr =
--- --     case parseJLValue t orgStr of
--- --         Left a -> Left a
--- --         Right (value, (fstCh : rest)) ->
--- --             case fstCh of
--- --                 'e' -> Right (JLArray ([] ++ [value]), rest)
--- --                 _ -> parseJLArray ([] ++ [value]) (fstCh : rest) orgStr
--- -- parseJLArray parsedArrEls (h:t) orgStr =
--- --     case parseJLValue (h:t) orgStr of
--- --         Left a -> Left a
--- --         Right (value, (fstCh : rest)) ->
--- --             case fstCh of
--- --                 'e' -> Right (JLArray (parsedArrEls ++ [value]), rest)
--- --                 _ -> parseJLArray (parsedArrEls ++ [value]) (fstCh : rest) orgStr
--- -- parseJLArray [] [] orgStr = Left ("Error around character " ++ show errPos ++ "Empty Array")
--- --     where
--- --         errPos = lenDiff orgStr []
--- -- parseJLArray _ dnStartL orgStr = Left ("Error around character " ++ show errPos ++ " received string: " ++ dnStartL ++ " list has to start with an 'l'")
--- --     where
--- --         errPos = lenDiff orgStr dnStartL
+-- parseString :: String -> String -> Either String (String, String)
+-- parseString str orgStr =
+--     let
+--         errPos = lenDiff orgStr str
+--         strLen = if C.isDigit $ head str
+--             then L.takeWhile C.isDigit str
+--             else "not declared"
+--         postfix = L.drop (length strLen) str
+--     in
+--         case strLen of 
+--             "not declared" -> Left ("Error around character " ++ show errPos ++ " received string: " ++ str ++ " Length of the string was not declared")
+--             _ ->
+--                 case postfix of
+--                 (':':r) -> Right (L.take (read strLen) r, L.drop (read strLen) r)
+--                 _ -> Left ("Error around character " ++ show errPos ++ " received string: " ++ str ++ " Invalid string")
