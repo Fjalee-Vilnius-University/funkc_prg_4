@@ -212,7 +212,7 @@ run =
     in
         case eitherJLValue of
             Left _ -> error "run function Left"
-            Right jlVal -> containerFindAllJLStrings jlVal
+            Right jlVal -> findAllJLStrings jlVal
             -- Right jlVal -> myFind arrayFindJLString jlVal
 
 type Finder a = ExceptT String (State JsonLikeValue) a
@@ -220,6 +220,25 @@ type Finder a = ExceptT String (State JsonLikeValue) a
 myFind :: Finder a -> JsonLikeValue -> (Either String a, JsonLikeValue)
 myFind finder = runState (runExceptT finder)
 
+-- findAllJLStrings :: JsonLikeValue -> [(JsonLikeValue, String)]
+-- findAllJLStrings jlValue = findAllJLStrings' jlValue []
+
+-- findAllJLStrings' :: JsonLikeValue -> [(JsonLikeValue, String)] -> [(JsonLikeValue, String)]
+-- findAllJLStrings' jlValue acc = 
+--     case jlValue of
+--         JLMap (h:t) ->
+--             let
+--                 findAllJLStrings h
+--             in
+                
+--         JLArray (h:t) ->
+--             let
+--                 findAllJLStrings h
+--             in
+
+--         JLString _ -> 
+--         JLInt _ -> findAllJLStrings' t acc 
+--         _ -> error "findAllJLStrings' function mano-non-exhaustive pattern" 
 
 
 containerFindAllJLStrings :: JsonLikeValue -> [(JsonLikeValue, String)]
