@@ -206,19 +206,132 @@ run =
         --msg = "li45ei88e4:nonoi65e3:asde"
 
         --[(_, "oxi"),(_, 42),(_, "oxoxox"), (_, [46, "asd"])]
-        msg = "d3:qws3:oxi2:poi42e4:opep6:oxoxox2:tyli43e3:asdee"
+        --msg = "d3:qws3:oxi2:poi42e4:opep6:oxoxox2:tyli43e3:asdee"
 
-        eitherJLValue= fst $ p msg
+        --[("t0", "oxi"),("t1", 42), ("t2", [("t21", "mimi"), ("t22", 69)]),("t3", "oxoxox")]
+        msg = "d2:t03:oxi2:t1i42e2:t2d3:t214:mimi3:t22i69ee2:t36:oxoxoxe"
+
+        eitherJLValue = fst $ p msg
     in
         case eitherJLValue of
-            Left _ -> error "run function Left"
-            Right jlVal -> findAllJLStrings jlVal
+            --Left _ -> error "run function Left"
+            Right jlVal -> findAllJLStringsIn jlVal
+            _ -> error "asfdfgdsfsdfdsfsdfdsfsdf"
+           -- Left _ -> error "run function Left"
+            --Right jlVal -> findAllJLStrings jlVal
             -- Right jlVal -> myFind arrayFindJLString jlVal
 
 type Finder a = ExceptT String (State JsonLikeValue) a
 
 myFind :: Finder a -> JsonLikeValue -> (Either String a, JsonLikeValue)
 myFind finder = runState (runExceptT finder)
+
+findAllJLStringsIn :: JsonLikeValue -> [(JsonLikeValue, String)]
+findAllJLStringsIn val = 
+    case val of
+        JLInt _ -> []
+        JLString a -> [(val, "")]
+        JLMap a -> findAllJLStringsInMap val
+        JLArray a -> error "not implemented"
+
+findAllJLStringsInMap :: JsonLikeValue -> [(JsonLikeValue, String)]
+findAllJLStringsInMap val = 
+    case val of
+        JLMap _ -> findAllJLStringsInMap' val []
+        _ -> error "error findAllJLStringsInMap, value isnt a map"
+
+findAllJLStringsInMap' :: JsonLikeValue -> [(JsonLikeValue, String)] -> [(JsonLikeValue, String)]
+findAllJLStringsInMap' theMap acc =
+    case theMap of 
+        JLMap [] -> acc
+        JLMap (h:t) -> 
+            let
+                key = fst h
+                value = snd h
+                stringsInHead = map (\(val, path) -> (val, key ++ "." ++ path)) (findAllJLStringsIn value)
+            in
+                findAllJLStringsInMap' (JLMap t) (acc ++ stringsInHead) 
+        _ -> error "findAllJLStringsInMap' error not a map"
+
+
+
+
+
+
+-- containerFindAllJLStrings :: JsonLikeValue -> [(JsonLikeValue, String)]
+-- containerFindAllJLStrings container = containerFindAllJLStrings' container []
+
+-- containerFindAllJLStrings' :: JsonLikeValue -> [(JsonLikeValue, String)] -> [(JsonLikeValue, String)]
+-- containerFindAllJLStrings' container acc = 
+--     case container of 
+--         JLMap body -> 
+--             case body of
+--                 [] -> acc
+--                 _ ->
+--                     let
+--                         (eitherJLString, rest) = myFind findNextMapValBodyStrings container
+--                     in
+--                         case eitherJLString of
+--                             Left _ -> acc
+--                             Right a -> containerFindAllJLStrings' rest (acc ++ a)
+--         JLArray body ->
+--             case body of
+--                 [] -> acc
+--                 _ ->
+--                     let
+--                         (eitherJLString, rest) = myFind arrayFindJLString container
+--                     in
+--                         case eitherJLString of
+--                             Left _ -> acc
+--                             Right a -> containerFindAllJLStrings' rest (acc ++ a)
+
+-- findNextMapValBodyStrings :: Finder [(JsonLikeValue, String)]
+-- findNextMapValBodyStrings = 
+--     do 
+--         myMap <- lift get
+--         case myMap of
+--             JLMap _ -> findNextMapValBodyStrings' myMap
+--             _ -> throwE "Error Finder: Not a map. "
+
+-- findNextMapValBodyStrings' :: JsonLikeValue -> Finder [(JsonLikeValue, String)]
+-- findNextMapValBodyStrings' (JLMap []) = do
+--     lift $ put $ JLMap []
+--     throwE "No String in the map. "
+-- findNextMapValBodyStrings' (JLMap ((key1, val1):t)) = 
+--     case val1 of
+--         JLString _ -> do
+--             lift $ put $ JLMap t
+--             return [(val1, "." ++ key1)]
+--         JLMap a -> 
+--             let
+--                 stringsInMap = map addPathPrefix a
+--             in
+--                 do
+--                     lift $ put $ JLMap t
+--                     return 
+--         _ -> findNextMapValBodyStrings' (JLMap t)
+
+-- arrayFindJLString :: Finder (JsonLikeValue, String)
+-- arrayFindJLString =
+--     do 
+--         myArray <- lift get
+--         case myArray of
+--             JLArray _ -> arrayFindJLString' myArray 0
+--             _ -> throwE "Error Finder: Not an array. "
+
+-- arrayFindJLString' :: JsonLikeValue -> Int -> Finder (JsonLikeValue, String)
+-- arrayFindJLString' (JLArray []) elIndex = do
+--     lift $ put $ JLArray []
+--     throwE "No String in the array. "
+-- arrayFindJLString' (JLArray (val1:t)) elIndex = 
+--     case val1 of
+--         JLString _ -> do
+--             lift $ put $ JLArray t
+--             return (val1, "[" ++ show elIndex ++ "]")
+--         _ -> arrayFindJLString' (JLArray t) (elIndex + 1)
+
+
+
 
 -- findAllJLStrings :: JsonLikeValue -> [(JsonLikeValue, String)]
 -- findAllJLStrings jlValue = findAllJLStrings' jlValue []
@@ -239,72 +352,3 @@ myFind finder = runState (runExceptT finder)
 --         JLString _ -> 
 --         JLInt _ -> findAllJLStrings' t acc 
 --         _ -> error "findAllJLStrings' function mano-non-exhaustive pattern" 
-
-
-containerFindAllJLStrings :: JsonLikeValue -> [(JsonLikeValue, String)]
-containerFindAllJLStrings container = containerFindAllJLStrings' container []
-
-containerFindAllJLStrings' :: JsonLikeValue -> [(JsonLikeValue, String)] -> [(JsonLikeValue, String)]
-containerFindAllJLStrings' container acc = 
-    case container of 
-        JLMap body -> 
-            case body of
-                [] -> acc
-                _ ->
-                    let
-                        (eitherJLString, rest) = myFind mapFindJLString container
-                    in
-                        case eitherJLString of
-                            Left _ -> acc
-                            Right a ->
-                                containerFindAllJLStrings' rest (acc ++ [a])
-        JLArray body ->
-            case body of
-                [] -> acc
-                _ ->
-                    let
-                        (eitherJLString, rest) = myFind arrayFindJLString container
-                    in
-                        case eitherJLString of
-                            Left _ -> acc
-                            Right a ->
-                                containerFindAllJLStrings' rest (acc ++ [a])
-
-mapFindJLString :: Finder (JsonLikeValue, String)
-mapFindJLString = 
-    do 
-        myMap <- lift get
-        case myMap of
-            JLMap _ -> mapFindJLString' myMap
-            _ -> throwE "Error Finder: Not a map. "
-
-mapFindJLString' :: JsonLikeValue -> Finder (JsonLikeValue, String)
-mapFindJLString' (JLMap []) = do
-    lift $ put $ JLMap []
-    throwE "No String in the map. "
-mapFindJLString' (JLMap ((key1, val1):t)) = 
-    case val1 of
-        JLString _ -> do
-            lift $ put $ JLMap t
-            return (val1, "." ++ key1)
-        _ -> mapFindJLString' (JLMap t)
-
-arrayFindJLString :: Finder (JsonLikeValue, String)
-arrayFindJLString =
-    do 
-        myArray <- lift get
-        case myArray of
-            JLArray _ -> arrayFindJLString' myArray 0
-            _ -> throwE "Error Finder: Not an array. "
-
-arrayFindJLString' :: JsonLikeValue -> Int -> Finder (JsonLikeValue, String)
-arrayFindJLString' (JLArray []) elIndex = do
-    lift $ put $ JLArray []
-    throwE "No String in the array. "
-arrayFindJLString' (JLArray (val1:t)) elIndex = 
-    case val1 of
-        JLString _ -> do
-            lift $ put $ JLArray t
-            return (val1, "[" ++ show elIndex ++ "]")
-        _ -> arrayFindJLString' (JLArray t) (elIndex + 1)
-
