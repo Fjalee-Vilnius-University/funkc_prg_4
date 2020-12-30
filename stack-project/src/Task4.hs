@@ -139,6 +139,9 @@ parseJLString :: Parser JsonLikeValue
 parseJLString = do
     str <- lift get
     case takeWhile isDigit str of
+        "0" -> do
+            lift $ put $ drop 2 str
+            return $ JLString ""
         "" -> throwE "Not a String. "
         _ -> parseJLString' str
 
@@ -251,17 +254,14 @@ run =
         --["ini", 45, ["lp", 90, [78, "ji"]],56, "mini" ]
         --msg = "l3:inii45el2:lpi90eli78e2:jieei56e4:minie"
 
-        msg = "ld4:iW2gi4e2:qzi1e5:oPIrx6:cGurqF5:KcV0q2:mS4:m7NY6:2cLVl37:5vEfYS92:pw1:t1:K5:LKzWI6:vvguCl4:0u4Eleei7ee"
-            
+        msg = "ld4:iW2gi4e2:qzi1e5:oPIrx6:cGurqF0:d5:KcV0q2:mS4:m7NY6:2cLVl37:5vEfYS92:pw1:t0:e1:K5:LKzWI6:vvguCli4e4:0u4Eleei7ee"
+
         eitherJLValue = fst $ p msg
     in
+        --p msg
         case eitherJLValue of
-            --Left _ -> error "run function Left"
             Right jlVal -> findAllJLStringsIn jlVal
-            _ -> error "asfdfgdsfsdfdsfsdfdsfsdf"
-           -- Left _ -> error "run function Left"
-            --Right jlVal -> findAllJLStrings jlVal
-            -- Right jlVal -> myFind arrayFindJLString jlVa
+            _ -> error "Left in run"
 
 findAllJLStringsIn :: JsonLikeValue -> [(JsonLikeValue, String)]
 findAllJLStringsIn val = 
