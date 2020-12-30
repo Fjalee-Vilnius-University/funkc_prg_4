@@ -187,8 +187,9 @@ parseJLInt' str =
         _  -> throwE "Error Int parser: Received string doesn't start with i. "
         
 ------------------------------------------------------------------
-------------------------------         ---------------------------
+------------------- Find Strings with paths ----------------------
 ------------------------------------------------------------------
+
 run = 
     let 
         --msg = "d4:prevd4:prevd4:lastld4:datali1ei0e1:Xeee4:prevd4:prevd4:lastld4:datali1ei2e1:Xeee4:prevd4:prevd4:lastld4:datali0ei1e1:Xeee4:prevd4:prevd4:lastld4:datali2ei2e1:Xeeee4:lastld4:datali2ei1e1:Oeeeee4:lastld4:datali2ei0e1:Oeeeee4:lastld4:datali1ei1e1:Oeeeee4:lastld4:datali0ei0e1:Oeeee4:lastld4:datali0ei2e1:Xeeee"
@@ -243,7 +244,7 @@ run =
         --msg = "d2:t03:oxi2:t1i42e2:t2d3:t214:mimi3:t22l3:mjud5:tarr13:yes5:tarr2i54e5:tarr32:noe2:moi67ee3:t23i69ee2:t36:oxoxoxe"
 
         --["ini", 45, ["lp", 90, [78, "ji"]],56, "mini" ]
-        --msg = "l3:inii45el2:lpi90eli78e2:jieei56e4:minie"
+        msg = "l3:inii45el2:lpi90eli78e2:jieei56e4:minie"
 
         eitherJLValue = fst $ p msg
     in
@@ -253,12 +254,7 @@ run =
             _ -> error "asfdfgdsfsdfdsfsdfdsfsdf"
            -- Left _ -> error "run function Left"
             --Right jlVal -> findAllJLStrings jlVal
-            -- Right jlVal -> myFind arrayFindJLString jlVal
-
-type Finder a = ExceptT String (State JsonLikeValue) a
-
-myFind :: Finder a -> JsonLikeValue -> (Either String a, JsonLikeValue)
-myFind finder = runState (runExceptT finder)
+            -- Right jlVal -> myFind arrayFindJLString jlVa
 
 findAllJLStringsIn :: JsonLikeValue -> [(JsonLikeValue, String)]
 findAllJLStringsIn val = 
@@ -304,9 +300,88 @@ findAllJLStringsInArray' theArray acc index =
                     findAllJLStringsInArray' (JLArray t) (acc ++ stringsInHead) (index + 1)
             _ -> error "findAllJLStringsInMap' error not a map"
 
+        
+------------------------------------------------------------------
+----------------------------- TOPS5 ------------------------------
+------------------------------------------------------------------
+tops5 :: [(JsonLikeValue, String)] -> [Maybe (JsonLikeValue, String)]
+tops5 arr = 
+    let
+        (top1, rest1) = sepLongestJLString arr
+        (top2, rest2) = sepLongestJLString rest1
+        (top3, rest3) = sepLongestJLString rest2
+        (top4, rest4) = sepLongestJLString rest3
+        (top5, rest5) = sepLongestJLString rest4
+    in
+        [top1] ++ [top2] ++ [top3] ++ [top4] ++ [top5]
+
+-- simplifyMaybe :: Maybe (JsonLikeValue, String) -> [(JsonLikeValue, String)]
+-- simplifyMaybe x = 
+--     case x of
+--         Nothing -> []
+--         Just a -> [a]
+
+sepLongestJLString :: [(JsonLikeValue, String)] -> (Maybe (JsonLikeValue, String), [(JsonLikeValue, String)])
+sepLongestJLString arr =
+    let 
+        max = findLongestJLStr arr
+        rest = removeIfCan max arr
+    in
+        (max, rest)
+
+removeIfCan :: Maybe (JsonLikeValue, String) -> [(JsonLikeValue, String)] ->[(JsonLikeValue, String)]
+removeIfCan del arr =
+    case del of 
+        Nothing -> arr
+        Just a -> delete a arr 
+
+findLongestJLStr :: [(JsonLikeValue, String)] -> Maybe (JsonLikeValue, String)
+findLongestJLStr [] = Nothing
+findLongestJLStr (el1 : []) = Just el1
+findLongestJLStr ((str1, path1) : (str2, path2) : t)
+    | isLonger str1 str2 = findLongestJLStr ((str1, path1) : t)
+    | otherwise = findLongestJLStr ((str2, path2) : t)
+
+isLonger :: JsonLikeValue -> JsonLikeValue -> Bool
+isLonger x y = 
+    case x of
+        JLString a ->
+            case y of
+                JLString b 
+                    | (length a) > (length b) -> True
+                    | otherwise -> False
+                _ -> error "Not JLString" 
+        _ -> error "Not JLString"
+
+-- maxLen :: JsonLikeValue -> JsonLikeValue -> JsonLikeValue
+-- maxLen x y = 
+--     case x of
+--         JLString a ->
+--             case y of
+--                 JLString b    
+--                     | length a > length b -> JLString a
+--                     | otherwise -> JLString b
+--                 _ -> error "Not JLString" 
+--         _ -> error "Not JLString"
+
+-- minLen :: JsonLikeValue -> JsonLikeValue -> JsonLikeValue
+-- minLen x y = 
+--     case x of
+--         JLString a ->
+--             case y of
+--                 JLString b    
+--                     | length a < length b -> JLString a
+--                     | otherwise -> JLString b
+--                 _ -> error "Not JLString" 
+--         _ -> error "Not JLString"
 
 
+------------------------------------------------------------------
 
+-- type Finder a = ExceptT String (State JsonLikeValue) a
+
+-- myFind :: Finder a -> JsonLikeValue -> (Either String a, JsonLikeValue)
+-- myFind finder = runState (runExceptT finder)
 
 -- containerFindAllJLStrings :: JsonLikeValue -> [(JsonLikeValue, String)]
 -- containerFindAllJLStrings container = containerFindAllJLStrings' container []
@@ -402,3 +477,10 @@ findAllJLStringsInArray' theArray acc index =
 --         JLString _ -> 
 --         JLInt _ -> findAllJLStrings' t acc 
 --         _ -> error "findAllJLStrings' function mano-non-exhaustive pattern" 
+
+
+-- maybeRemove :: Maybe (JsonLikeValue, String) -> [(JsonLikeValue, String)] -> Maybe [(JsonLikeValue, String)]
+-- maybeRemove del arr =
+--     case del of 
+--         Nothing -> Nothing
+--         Just a -> Just $ delete a arr 
