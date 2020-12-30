@@ -71,6 +71,9 @@ parseJLMap :: Parser JsonLikeValue
 parseJLMap = do
     str <- lift get 
     case str of
+        ('d':'e':t) -> do
+            lift $ put t
+            return $ JLMap []
         ('d':t) -> parseJLMap' [] str
         _ -> throwE "Not a Map. "
 
@@ -105,6 +108,9 @@ parseJLArray :: Parser JsonLikeValue
 parseJLArray = do
     str <- lift get 
     case str of
+        ('l':'e':t) -> do
+            lift $ put t
+            return $ JLArray []
         ('l':t) -> parseJLArray' [] t
         _ -> throwE "Not an Array. "
 
@@ -127,7 +133,6 @@ parseJLArray' acc str =
                             ('e': t) -> do
                                 lift $ put t
                                 return $ JLArray newAcc
-                            
                             _ -> parseJLArray' newAcc rest
 
 parseJLString :: Parser JsonLikeValue
@@ -244,8 +249,10 @@ run =
         --msg = "d2:t03:oxi2:t1i42e2:t2d3:t214:mimi3:t22l3:mjud5:tarr13:yes5:tarr2i54e5:tarr32:noe2:moi67ee3:t23i69ee2:t36:oxoxoxe"
 
         --["ini", 45, ["lp", 90, [78, "ji"]],56, "mini" ]
-        msg = "l3:inii45el2:lpi90eli78e2:jieei56e4:minie"
+        --msg = "l3:inii45el2:lpi90eli78e2:jieei56e4:minie"
 
+        msg = "ld4:iW2gi4e2:qzi1e5:oPIrx6:cGurqF5:KcV0q2:mS4:m7NY6:2cLVl37:5vEfYS92:pw1:t1:K5:LKzWI6:vvguCl4:0u4Eleei7ee"
+            
         eitherJLValue = fst $ p msg
     in
         case eitherJLValue of
@@ -304,6 +311,8 @@ findAllJLStringsInArray' theArray acc index =
 ------------------------------------------------------------------
 ----------------------------- TOPS5 ------------------------------
 ------------------------------------------------------------------
+
+
 tops5 :: [(JsonLikeValue, String)] -> [Maybe (JsonLikeValue, String)]
 tops5 arr = 
     let
