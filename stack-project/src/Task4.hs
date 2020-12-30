@@ -205,11 +205,45 @@ run =
         --[45, 88, "nono", 65, "asd"]
         --msg = "li45ei88e4:nonoi65e3:asde"
 
-        --[(_, "oxi"),(_, 42),(_, "oxoxox"), (_, [46, "asd"])]
+        --[(qws, "oxi"),(po, 42),(opep, "oxoxox"), (ty, [46, "asd"])]
         --msg = "d3:qws3:oxi2:poi42e4:opep6:oxoxox2:tyli43e3:asdee"
 
         --[("t0", "oxi"),("t1", 42), ("t2", [("t21", "mimi"), ("t22", 69)]),("t3", "oxoxox")]
-        msg = "d2:t03:oxi2:t1i42e2:t2d3:t214:mimi3:t22i69ee2:t36:oxoxoxe"
+        --msg = "d2:t03:oxi2:t1i42e2:t2d3:t214:mimi3:t22i69ee2:t36:oxoxoxe"
+
+
+        --should Find 
+            -- oxi
+            -- mimi
+            -- mju
+            -- yes
+            -- no
+            -- mo
+            -- oxoxox
+        --[("t0", "oxi"),
+        -- ("t1", 42),
+        -- ("t2", [
+        --          ("t21", "mimi"),
+        --          ("t22",
+            --          [
+            --              "mju"
+            --              [
+            --                 ("tarr1", "yes"),
+            --                 ("tarr2", 54),
+            --                 ("tarr3", "no")
+            --              ]
+            --              "mo"
+            --              67
+
+            --          ]
+        --          ("t23", 69)])
+        --        ]),
+        -- 
+        -- ("t3", "oxoxox")
+        --msg = "d2:t03:oxi2:t1i42e2:t2d3:t214:mimi3:t22l3:mjud5:tarr13:yes5:tarr2i54e5:tarr32:noe2:moi67ee3:t23i69ee2:t36:oxoxoxe"
+
+        --["ini", 45, ["lp", 90, [78, "ji"]],56, "mini" ]
+        --msg = "l3:inii45el2:lpi90eli78e2:jieei56e4:minie"
 
         eitherJLValue = fst $ p msg
     in
@@ -232,7 +266,7 @@ findAllJLStringsIn val =
         JLInt _ -> []
         JLString a -> [(val, "")]
         JLMap a -> findAllJLStringsInMap val
-        JLArray a -> error "not implemented"
+        JLArray a -> findAllJLStringsInArray val
 
 findAllJLStringsInMap :: JsonLikeValue -> [(JsonLikeValue, String)]
 findAllJLStringsInMap val = 
@@ -248,11 +282,27 @@ findAllJLStringsInMap' theMap acc =
             let
                 key = fst h
                 value = snd h
-                stringsInHead = map (\(val, path) -> (val, key ++ "." ++ path)) (findAllJLStringsIn value)
+                stringsInHead = map (\(val, path) -> (val, "." ++ key ++ path)) (findAllJLStringsIn value)
             in
                 findAllJLStringsInMap' (JLMap t) (acc ++ stringsInHead) 
         _ -> error "findAllJLStringsInMap' error not a map"
 
+findAllJLStringsInArray :: JsonLikeValue -> [(JsonLikeValue, String)]
+findAllJLStringsInArray val = 
+    case val of
+    JLArray _ -> findAllJLStringsInArray' val [] 0
+    _ -> error "error findAllJLStringsInArray, value isnt an array"
+
+findAllJLStringsInArray' :: JsonLikeValue -> [(JsonLikeValue, String)] -> Int -> [(JsonLikeValue, String)]
+findAllJLStringsInArray' theArray acc index =
+    case theArray of 
+            JLArray [] -> acc
+            JLArray (h:t) -> 
+                let
+                    stringsInHead = map (\(val, path) -> (val, "[" ++ show index ++ "]" ++ path)) (findAllJLStringsIn h)
+                in
+                    findAllJLStringsInArray' (JLArray t) (acc ++ stringsInHead) (index + 1)
+            _ -> error "findAllJLStringsInMap' error not a map"
 
 
 
