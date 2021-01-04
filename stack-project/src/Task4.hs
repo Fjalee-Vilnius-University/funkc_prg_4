@@ -197,70 +197,12 @@ parseJLInt' str =
 ------------------------------------------------------------------
 ------------------- Find Strings with paths ----------------------
 ------------------------------------------------------------------
-
-run = 
+run msg = 
     let 
-        --msg = "d4:prevd4:prevd4:lastld4:datali1ei0e1:Xeee4:prevd4:prevd4:lastld4:datali1ei2e1:Xeee4:prevd4:prevd4:lastld4:datali0ei1e1:Xeee4:prevd4:prevd4:lastld4:datali2ei2e1:Xeeee4:lastld4:datali2ei1e1:Oeeeee4:lastld4:datali2ei0e1:Oeeeee4:lastld4:datali1ei1e1:Oeeeee4:lastld4:datali0ei0e1:Oeeee4:lastld4:datali0ei2e1:Xeeee"
-        
-        --[(_, "oxi"),(_, 42),(_, "oxoxox")]
-        --msg = "d3:qws3:oxi2:poi42e4:opep6:oxoxoxe"
-
-        --[(_, 32),(_, 42),(_, 67)]
-        --msg = "d3:qwsi32e2:poi42e4:opepi67ee"
-
-        --[(_, 32),(_, 42),(_, "hyhy")]
-        --msg = "d3:qwsi32e2:poi42e4:opep4:hyhye"
-
-        --[45, 88, "nono", 65, "asd"]
-        --msg = "li45ei88e4:nonoi65e3:asde"
-
-        --[(qws, "oxi"),(po, 42),(opep, "oxoxox"), (ty, [46, "asd"])]
-        --msg = "d3:qws3:oxi2:poi42e4:opep6:oxoxox2:tyli43e3:asdee"
-
-        --[("t0", "oxi"),("t1", 42), ("t2", [("t21", "mimi"), ("t22", 69)]),("t3", "oxoxox")]
-        --msg = "d2:t03:oxi2:t1i42e2:t2d3:t214:mimi3:t22i69ee2:t36:oxoxoxe"
-
-
-        --should Find 
-            -- oxi
-            -- mimi
-            -- mju
-            -- yes
-            -- no
-            -- mo
-            -- oxoxox
-        --[("t0", "oxi"),
-        -- ("t1", 42),
-        -- ("t2", [
-        --          ("t21", "mimi"),
-        --          ("t22",
-            --          [
-            --              "mju"
-            --              [
-            --                 ("tarr1", "yes"),
-            --                 ("tarr2", 54),
-            --                 ("tarr3", "no")
-            --              ]
-            --              "mo"
-            --              67
-
-            --          ]
-        --          ("t23", 69)])
-        --        ]),
-        -- 
-        -- ("t3", "oxoxox")
-        --msg = "d2:t03:oxi2:t1i42e2:t2d3:t214:mimi3:t22l3:mjud5:tarr13:yes5:tarr2i54e5:tarr32:noe2:moi67ee3:t23i69ee2:t36:oxoxoxe"
-
-        --["ini", 45, ["lp", 90, [78, "ji"]],56, "mini" ]
-        --msg = "l3:inii45el2:lpi90eli78e2:jieei56e4:minie"
-
-        msg = "ld4:iW2gi4e2:qzi1e5:oPIrx6:cGurqF0:d5:KcV0q2:mS4:m7NY6:2cLVl37:5vEfYS92:pw1:t0:e1:K5:LKzWI6:vvguCli4e4:0u4Eleei7ee"
-
         eitherJLValue = fst $ p msg
     in
-        --p msg
         case eitherJLValue of
-            Right jlVal -> findAllJLStringsIn jlVal
+            Right jlVal -> tops5 $ findAllJLStringsIn jlVal
             _ -> error "Left in run"
 
 findAllJLStringsIn :: JsonLikeValue -> [(JsonLikeValue, String)]
@@ -324,12 +266,6 @@ tops5 arr =
     in
         [top1] ++ [top2] ++ [top3] ++ [top4] ++ [top5]
 
--- simplifyMaybe :: Maybe (JsonLikeValue, String) -> [(JsonLikeValue, String)]
--- simplifyMaybe x = 
---     case x of
---         Nothing -> []
---         Just a -> [a]
-
 sepLongestJLString :: [(JsonLikeValue, String)] -> (Maybe (JsonLikeValue, String), [(JsonLikeValue, String)])
 sepLongestJLString arr =
     let 
@@ -361,6 +297,42 @@ isLonger x y =
                     | otherwise -> False
                 _ -> error "Not JLString" 
         _ -> error "Not JLString"
+
+------------------------------------------------------------------
+----------------------------- Output ------------------------------
+------------------------------------------------------------------
+
+strArrToIO :: [String] -> IO()
+strArrToIO str = putStr $ unlines str
+
+createStrForOutput :: [(JsonLikeValue, String)] -> [String]
+createStrForOutput arr = map tupleStringAndPathIntoOutString arr
+
+tupleStringAndPathIntoOutString :: (JsonLikeValue, String) -> String
+tupleStringAndPathIntoOutString a = 
+    let
+        root = "root"
+    in
+        case a of
+            (JLString val, path) -> root ++ path ++ " = \"" ++ val ++ "\""
+            _ -> "Mano non-exhaustive in tupleStringAndPathIntoOutString"
+        
+simplifyMaybe :: [Maybe (JsonLikeValue, String)] -> [(JsonLikeValue, String)]
+simplifyMaybe arr =
+    let
+        temp = fmap (\a -> simplifyMaybe' a) arr
+    in
+        (temp !! 0) ++ (temp !! 1) ++ (temp !! 2) ++ (temp !! 3) ++ (temp !! 4)
+
+simplifyMaybe' :: Maybe (JsonLikeValue, String) -> [(JsonLikeValue, String)]
+simplifyMaybe' x = 
+    case x of
+        Nothing -> []
+        Just a -> [a]
+
+test = simplifyMaybe $ run "li5ei6elel5:EAgXv3:oPHi5edei4ed7:N7reVSEli6ei1ei5ei2ee8:cHT32TyZi9e3:L339:ErOXu4W4C9:hd0HrB5qti4e2:iW2:ol7:sb6mtydd1:88:QWPIm89Ne3:q89de0:lee1:Jee"
+
+
 
 -- maxLen :: JsonLikeValue -> JsonLikeValue -> JsonLikeValue
 -- maxLen x y = 
@@ -493,3 +465,58 @@ isLonger x y =
 --     case del of 
 --         Nothing -> Nothing
 --         Just a -> Just $ delete a arr 
+
+
+--msg = "d4:prevd4:prevd4:lastld4:datali1ei0e1:Xeee4:prevd4:prevd4:lastld4:datali1ei2e1:Xeee4:prevd4:prevd4:lastld4:datali0ei1e1:Xeee4:prevd4:prevd4:lastld4:datali2ei2e1:Xeeee4:lastld4:datali2ei1e1:Oeeeee4:lastld4:datali2ei0e1:Oeeeee4:lastld4:datali1ei1e1:Oeeeee4:lastld4:datali0ei0e1:Oeeee4:lastld4:datali0ei2e1:Xeeee"
+        
+        --[(_, "oxi"),(_, 42),(_, "oxoxox")]
+        --msg = "d3:qws3:oxi2:poi42e4:opep6:oxoxoxe"
+
+        --[(_, 32),(_, 42),(_, 67)]
+        --msg = "d3:qwsi32e2:poi42e4:opepi67ee"
+
+        --[(_, 32),(_, 42),(_, "hyhy")]
+        --msg = "d3:qwsi32e2:poi42e4:opep4:hyhye"
+
+        --[45, 88, "nono", 65, "asd"]
+        --msg = "li45ei88e4:nonoi65e3:asde"
+
+        --[(qws, "oxi"),(po, 42),(opep, "oxoxox"), (ty, [46, "asd"])]
+        --msg = "d3:qws3:oxi2:poi42e4:opep6:oxoxox2:tyli43e3:asdee"
+
+        --[("t0", "oxi"),("t1", 42), ("t2", [("t21", "mimi"), ("t22", 69)]),("t3", "oxoxox")]
+        --msg = "d2:t03:oxi2:t1i42e2:t2d3:t214:mimi3:t22i69ee2:t36:oxoxoxe"
+
+
+        --should Find 
+            -- oxi
+            -- mimi
+            -- mju
+            -- yes
+            -- no
+            -- mo
+            -- oxoxox
+        --[("t0", "oxi"),
+        -- ("t1", 42),
+        -- ("t2", [
+        --          ("t21", "mimi"),
+        --          ("t22",
+            --          [
+            --              "mju"
+            --              [
+            --                 ("tarr1", "yes"),
+            --                 ("tarr2", 54),
+            --                 ("tarr3", "no")
+            --              ]
+            --              "mo"
+            --              67
+
+            --          ]
+        --          ("t23", 69)])
+        --        ]),
+        -- 
+        -- ("t3", "oxoxox")
+        --msg = "d2:t03:oxi2:t1i42e2:t2d3:t214:mimi3:t22l3:mjud5:tarr13:yes5:tarr2i54e5:tarr32:noe2:moi67ee3:t23i69ee2:t36:oxoxoxe"
+
+        --["ini", 45, ["lp", 90, [78, "ji"]],56, "mini" ]
+        --msg = "l3:inii45el2:lpi90eli78e2:jieei56e4:minie"
