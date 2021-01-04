@@ -19,41 +19,6 @@ data JsonLikeValue =
     JLArray [JsonLikeValue]
     deriving (Show, Eq)
 
-
-p msg = parseJLMessage msg
-
-t = 
-    let
-        msg1 = "d2:xsl1:01:11:21:01:11:21:01:11:2e2:ysl1:01:01:01:11:11:11:21:21:2e2:vsl1:X1:X1:O1:X1:O1:X1:X1:O1:Oee"
-        msg2 = "d4:lastd2:vsl1:Xe2:ysli1ee2:xsli1eee4:prevd4:lastd2:vsl1:Oe2:ysli0ee2:xsli0eee4:prevd4:prevd4:lastd2:vsl1:Oe2:ysli0ee2:xsli1eee4:prevd4:lastd2:vsl1:Xe2:ysli0ee2:xsli1eeeee4:lastd2:vsl1:Xe2:ysli1ee2:xsli0eeeeee"
-        msg3 = "d4:prevd4:lastld4:datali0ei1e1:Oeee4:prevd4:lastld4:datali0ei2e1:Xeee4:prevd4:lastld4:datali2ei0e1:Oeee4:prevd4:prevd4:lastld4:datali2ei2e1:Oeee4:prevd4:prevd4:lastld4:datali0ei0e1:Oeee4:prevd4:lastld4:datali1ei1e1:Xeeeee4:lastld4:datali2ei1e1:Xeeeee4:lastld4:datali1ei2e1:Xeeeeeee4:lastld4:datali1ei0e1:Xeeee"
-    
-        test1 = p msg1
-        test2 = p msg2
-        test3 = p msg3
-        allTestRight = 
-            case test1 of
-                (Left _, _) -> False
-                (Right _, _) ->
-                    case test2 of 
-                    (Left _, _) -> False
-                    (Right _, _) ->
-                        case test3 of
-                            (Left _, _) -> False
-                            (Right _, _) -> True
-    in
-        do
-            putStrLn "======================================================================================================================================================================================================================================================================================"
-            putStrLn $ show test1
-            putStrLn ""
-            putStrLn "2"
-            putStrLn $ show test2
-            putStrLn ""
-            putStrLn "3"
-            putStrLn $ show test3
-            putStrLn ""
-            putStrLn $ show allTestRight
-
 ------------------------------------------------------------------
 ------------------------------ Parsing ---------------------------
 ------------------------------------------------------------------
@@ -197,9 +162,10 @@ parseJLInt' str =
 ------------------------------------------------------------------
 ------------------- Find Strings with paths ----------------------
 ------------------------------------------------------------------
-run msg = 
+
+msgToTops5 msg = 
     let 
-        eitherJLValue = fst $ p msg
+        eitherJLValue = fst $ parseJLMessage msg
     in
         case eitherJLValue of
             Right jlVal -> tops5 $ findAllJLStringsIn jlVal
@@ -330,7 +296,9 @@ simplifyMaybe' x =
         Nothing -> []
         Just a -> [a]
 
-test = simplifyMaybe $ run "li5ei6elel5:EAgXv3:oPHi5edei4ed7:N7reVSEli6ei1ei5ei2ee8:cHT32TyZi9e3:L339:ErOXu4W4C9:hd0HrB5qti4e2:iW2:ol7:sb6mtydd1:88:QWPIm89Ne3:q89de0:lee1:Jee"
+test msg = strArrToIO $ createStrForOutput $ simplifyMaybe $ msgToTops5 msg
+
+test2 = "yesnoyes"
 
 
 

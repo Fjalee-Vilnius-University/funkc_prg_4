@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 9b0652ef3fa2dbb95729d40f7e8dfe109b16ca02f6411dd85cba9dd3be5be7f6
+-- hash: ca409275c1e4146a4deb02be0077c08ec4995c0cf1dcc09c4e5c55ecfce8f8ac
 
 name:           stack-project
 version:        0.1.0.0
@@ -35,6 +35,7 @@ library
       src
   build-depends:
       base >=4.7 && <5
+    , transformers
   default-language: Haskell2010
 
 executable stack-project-exe
@@ -47,6 +48,7 @@ executable stack-project-exe
   build-depends:
       base >=4.7 && <5
     , stack-project
+    , transformers
   default-language: Haskell2010
 
 test-suite stack-project-test
@@ -60,4 +62,5 @@ test-suite stack-project-test
   build-depends:
       base >=4.7 && <5
     , stack-project
+    , transformers
   default-language: Haskell2010
